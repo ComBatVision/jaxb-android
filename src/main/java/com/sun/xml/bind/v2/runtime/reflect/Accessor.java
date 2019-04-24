@@ -1,19 +1,19 @@
 /*
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
- * Copyright (c) 1997-2011 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997-2017 Oracle and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
  * and Distribution License("CDDL") (collectively, the "License").  You
  * may not use this file except in compliance with the License.  You can
  * obtain a copy of the License at
- * https://glassfish.dev.java.net/public/CDDL+GPL_1_1.html
- * or packager/legal/LICENSE.txt.  See the License for the specific
+ * https://oss.oracle.com/licenses/CDDL+GPL-1.1
+ * or LICENSE.txt.  See the License for the specific
  * language governing permissions and limitations under the License.
  *
  * When distributing the software, include this License Header Notice in each
- * file and include the License file at packager/legal/LICENSE.txt.
+ * file and include the License file at LICENSE.txt.
  *
  * GPL Classpath Exception:
  * Oracle designates this particular file as subject to the "Classpath"
@@ -61,9 +61,7 @@ import com.sun.xml.bind.api.AccessorException;
 import com.sun.xml.bind.api.JAXBRIContext;
 import com.sun.xml.bind.v2.model.core.Adapter;
 import com.sun.xml.bind.v2.model.impl.RuntimeModelBuilder;
-import com.sun.xml.bind.v2.model.nav.Navigator;
 import com.sun.xml.bind.v2.runtime.JAXBContextImpl;
-import com.sun.xml.bind.v2.runtime.reflect.opt.OptimizedAccessorFactory;
 import com.sun.xml.bind.v2.runtime.unmarshaller.Loader;
 import com.sun.xml.bind.v2.runtime.unmarshaller.Receiver;
 import com.sun.xml.bind.v2.runtime.unmarshaller.UnmarshallingContext;
@@ -72,13 +70,13 @@ import org.xml.sax.SAXException;
 
 /**
  * Accesses a particular property of a bean.
- * <p/>
- * <p/>
+ * <p>
+ * <p>
  * This interface encapsulates the access to the actual data store.
  * The intention is to generate implementations for a particular bean
  * and a property to improve the performance.
- * <p/>
- * <p/>
+ * <p>
+ * <p>
  * Accessor can be used as a receiver. Upon receiving an object
  * it sets that to the field.
  *
@@ -103,7 +101,7 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
      *
      * @param context The {@link JAXBContextImpl} that owns the whole thing.
      *                (See {@link RuntimeModelBuilder#context}.)
-     * @return At least the implementation can return <tt>this</tt>.
+     * @return At least the implementation can return {@code this}.
      */
     public Accessor<BeanT, ValueT> optimize(@Nullable JAXBContextImpl context) {
         return this;
@@ -135,7 +133,7 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
 
     /**
      * Sets the value without adapting the value.
-     * <p/>
+     * <p>
      * This ugly entry point is only used by JAX-WS.
      * See {@link JAXBRIContext#getElementPropertyAccessor}
      */
@@ -145,7 +143,7 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
 
     /**
      * Returns true if this accessor wraps an adapter.
-     * <p/>
+     * <p>
      * This method needs to be used with care, but it helps some optimization.
      */
     public boolean isAdapted() {
@@ -154,7 +152,7 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
 
     /**
      * Sets the value without adapting the value.
-     * <p/>
+     * <p>
      * This ugly entry point is only used by JAX-WS.
      * See {@link JAXBRIContext#getElementPropertyAccessor}
      */
@@ -164,7 +162,7 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
 
     public void receive(UnmarshallingContext.State state, Object o) throws SAXException {
         try {
-            set((BeanT) state.target, (ValueT) o);
+            set((BeanT) state.getTarget(), (ValueT) o);
         } catch (AccessorException e) {
             Loader.handleGenericException(e, true);
         } catch (IllegalAccessError iae) {
@@ -211,7 +209,7 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
 
     public final <T> Accessor<BeanT, T> adapt(Adapter<Type, Class> adapter) {
         return new AdaptedAccessor<BeanT, ValueT, T>(
-                (Class<T>) Navigator.REFLECTION.erasure(adapter.defaultType),
+                (Class<T>) Utils.REFLECTION_NAVIGATOR.erasure(adapter.defaultType),
                 this,
                 adapter.adapterType);
     }
@@ -243,8 +241,7 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
             if (!Modifier.isPublic(mod) || Modifier.isFinal(mod) || !Modifier.isPublic(f.getDeclaringClass().getModifiers())) {
                 try {
                     // attempt to make it accessible, but do so in the security context of the calling application.
-                    // don't do this in the doPrivilege block, as that would create a security hole for anyone
-                    // to make any field accessible.
+                    // don't do this in the doPrivilege block
                     f.setAccessible(true);
                 } catch (SecurityException e) {
                     if ((!accessWarned) && (!supressAccessorWarnings)) {
@@ -279,14 +276,7 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
 
         @Override
         public Accessor<BeanT, ValueT> optimize(JAXBContextImpl context) {
-            if (context != null && context.fastBoot)
-                // let's not waste time on doing this for the sake of faster boot.
-                return this;
-            Accessor<BeanT, ValueT> acc = OptimizedAccessorFactory.get(f);
-            if (acc != null)
-                return acc;
-            else
-                return this;
+            return this;
         }
     }
 
@@ -392,25 +382,14 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
 
         @Override
         public Accessor<BeanT, ValueT> optimize(JAXBContextImpl context) {
-            if (getter == null || setter == null)
-                // if we aren't complete, OptimizedAccessor won't always work
-                return this;
-            if (context != null && context.fastBoot)
-                // let's not waste time on doing this for the sake of faster boot.
-                return this;
-
-            Accessor<BeanT, ValueT> acc = OptimizedAccessorFactory.get(getter, setter);
-            if (acc != null)
-                return acc;
-            else
-                return this;
+            return this;
         }
     }
 
     /**
      * A version of {@link GetterSetterReflection} that doesn't have any setter.
-     * <p/>
-     * <p/>
+     * <p>
+     * <p>
      * This provides a user-friendly error message.
      */
     public static class GetterOnlyReflection<BeanT, ValueT> extends GetterSetterReflection<BeanT, ValueT> {
@@ -426,8 +405,8 @@ public abstract class Accessor<BeanT, ValueT> implements Receiver {
 
     /**
      * A version of {@link GetterSetterReflection} thaat doesn't have any getter.
-     * <p/>
-     * <p/>
+     * <p>
+     * <p>
      * This provides a user-friendly error message.
      */
     public static class SetterOnlyReflection<BeanT, ValueT> extends GetterSetterReflection<BeanT, ValueT> {
